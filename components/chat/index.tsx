@@ -24,6 +24,7 @@ export function Chat() {
 
   useEffect(() => {
     alreadySentMessage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function simulateUploadClick() {
@@ -53,6 +54,8 @@ export function Chat() {
     }
 
     try {
+      setConversation((prev) => [...prev, payload]);
+
       const response = await generateAnswer(payload);
 
       if (!response.success) {
@@ -60,7 +63,7 @@ export function Chat() {
         return;
       }
 
-      setConversation([...conversation, response.data!]);
+      setConversation((prev) => [...prev, response.data!]);
     } catch (err) {
       console.error(err);
       toast.error('Failed to send the message.');
@@ -82,13 +85,15 @@ export function Chat() {
       )}
 
       {!isLoading && hideHeaderText && (
-        <ul className='flex flex-col space-y-4 mb-8 w-full'>
+        <ul className='flex flex-col w-full gap-y-2 mb-6 max-h-[60vh] overflow-y-auto'>
           {conversation.map((cvx, index) => (
             <li
               key={index}
               className={cn(
                 'w-[80%] border rounded-lg p-4',
-                cvx.type === 'user' ? 'ml-auto' : 'mr-auto',
+                cvx.type === 'user'
+                  ? 'self-end bg-gray-500 text-white'
+                  : 'self-start',
               )}
             >
               <p>{cvx.message}</p>

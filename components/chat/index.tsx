@@ -2,7 +2,7 @@
 
 import { generateAnswer } from '@/actions/chat';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '@/lib/client';
@@ -14,28 +14,16 @@ import {
   InputGroupAddon,
   InputGroupButton,
 } from '@/components/ui/input-group';
+import { ChatLoadingIndicator } from '@/components/chat/loading';
 
 export function Chat() {
   const attachedFilesRef = useRef<HTMLInputElement>(null);
-  const [hideHeaderText, setHideHeaderText] = useState(false);
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversation, setConversation] = useState<ChatMessage[]>([]);
 
-  useEffect(() => {
-    alreadySentMessage();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   function simulateUploadClick() {
     attachedFilesRef.current?.click();
-  }
-
-  function alreadySentMessage() {
-    if (localStorage.getItem('alreadySentMessage')) setHideHeaderText(true);
-
-    if (conversation.length > 0) setHideHeaderText(false);
-    else setHideHeaderText(true);
   }
 
   async function handleSendMessage() {
@@ -48,33 +36,31 @@ export function Chat() {
     setIsLoading(true);
     setMessage('');
 
-    if (!localStorage.getItem('alreadySentMessage')) {
-      localStorage.setItem('alreadySentMessage', 'true');
-      setHideHeaderText(true);
-    }
-
     try {
       setConversation((prev) => [...prev, payload]);
 
-      const response = await generateAnswer(payload);
+      // simulate delay when sending message to the server
+      setTimeout(async () => {
+        const response = await generateAnswer(payload);
 
-      if (!response.success) {
-        toast.error(response.message);
-        return;
-      }
+        if (!response.success) {
+          toast.error(response.message);
+          return;
+        }
 
-      setConversation((prev) => [...prev, response.data!]);
+        setConversation((prev) => [...prev, response.data!]);
+        setIsLoading(false);
+      }, 3000);
     } catch (err) {
       console.error(err);
       toast.error('Failed to send the message.');
-    } finally {
       setIsLoading(false);
     }
   }
 
   return (
     <div className='w-full'>
-      {!hideHeaderText && !isLoading && (
+      {conversation.length === 0 && (
         <div className='text-center mb-6 space-y-2'>
           <h3 className='text-3xl font-semibold'>What do you want to know?</h3>
           <p className='text-sm text-muted-foreground'>
@@ -84,25 +70,25 @@ export function Chat() {
         </div>
       )}
 
-      {!isLoading && hideHeaderText && (
-        <ul className='flex flex-col w-full gap-y-2 mb-6 max-h-[60vh] overflow-y-auto'>
-          {conversation.map((cvx, index) => (
-            <li
-              key={index}
-              className={cn(
-                'w-[80%] border rounded-lg p-4',
-                cvx.type === 'user'
-                  ? 'self-end bg-gray-500 text-white'
-                  : 'self-start',
-              )}
-            >
-              <p>{cvx.message}</p>
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul className='flex flex-col w-full gap-y-2 mb-6 max-h-[60vh] overflow-y-auto'>
+        {conversation.map((cvx, index) => (
+          <li
+            key={index}
+            className={cn(
+              'w-[80%] border rounded-lg p-4',
+              cvx.type === 'user'
+                ? 'self-end bg-gray-500 text-white'
+                : 'self-start',
+            )}
+          >
+            <p>{cvx.message}</p>
+          </li>
+        ))}
+      </ul>
 
       <input type='file' ref={attachedFilesRef} multiple className='hidden' />
+
+      {isLoading && <ChatLoadingIndicator />}
 
       <InputGroup>
         <InputGroupTextarea

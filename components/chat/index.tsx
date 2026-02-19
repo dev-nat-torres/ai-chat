@@ -27,33 +27,63 @@ export function Chat() {
   }
 
   async function handleSendMessage() {
-    const payload = {
+    if (!message.trim()) return;
+
+    const userPayload = {
       id: uuidv4(),
       message,
       type: 'user',
     };
 
-    setIsLoading(true);
+    const assistantId = uuidv4();
+
+    const assistantPayload = {
+      id: assistantId,
+      message: '',
+      type: 'assistant',
+    };
+
+    setConversation((prev) => [...prev, userPayload, assistantPayload]);
     setMessage('');
+    setIsLoading(true);
 
     try {
-      setConversation((prev) => [...prev, payload]);
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        body: JSON.stringify({ message }),
+      });
 
-      // simulate delay when sending message to the server
-      setTimeout(async () => {
-        const response = await generateAnswer(payload);
+      if (!res.body) throw new Error('No response body');
 
-        if (!response.success) {
-          toast.error(response.message);
-          return;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      let done = false;
+      let accumulatedText = '';
+
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+
+        if (value) {
+          const chunk = decoder.decode(value, { stream: true });
+          accumulatedText += chunk;
+
+          // update assistant message progressively
+          setConversation((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantId
+                ? { ...msg, message: accumulatedText }
+                : msg,
+            ),
+          );
         }
+      }
 
-        setConversation((prev) => [...prev, response.data!]);
-        setIsLoading(false);
-      }, 3000);
+      setIsLoading(false);
     } catch (err) {
       console.error(err);
-      toast.error('Failed to send the message.');
+      toast.error('Streaming failed');
       setIsLoading(false);
     }
   }

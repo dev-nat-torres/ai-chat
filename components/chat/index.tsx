@@ -2,7 +2,7 @@
 
 import type { ChatMessageHistory } from '@/lib/server';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/client';
 
@@ -21,6 +21,11 @@ export function Chat() {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversation, setConversation] = useState<ChatMessageHistory>([]);
+  const conversationBottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    conversationBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [conversation]);
 
   function simulateUploadClick() {
     attachedFilesRef.current?.click();
@@ -77,11 +82,6 @@ export function Chat() {
         });
       }
 
-      // setConversation((prev) => [
-      //   ...prev,
-      //   { content: accumulatedText, role: 'model' },
-      // ]);
-
       setIsLoading(false);
     } catch (err) {
       console.error(err);
@@ -137,7 +137,14 @@ export function Chat() {
                     <ol className='list-decimal pl-5 mb-2'>{children}</ol>
                   ),
                   li: ({ children }) => <li className='mb-1'>{children}</li>,
-                  code: ({ inline, children }: any) =>
+                  code: ({
+                    inline,
+                    children,
+                  }: {
+                    inline?: boolean;
+                    className?: string;
+                    children?: React.ReactNode;
+                  }) =>
                     inline ? (
                       <code className='bg-gray-100 text-pink-600 px-1 rounded text-sm'>
                         {children}
@@ -162,6 +169,8 @@ export function Chat() {
             )}
           </li>
         ))}
+
+        <div ref={conversationBottomRef}></div>
       </ul>
 
       <input type='file' ref={attachedFilesRef} multiple className='hidden' />

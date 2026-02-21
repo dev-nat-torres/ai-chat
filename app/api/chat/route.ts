@@ -1,31 +1,44 @@
 import type { NextRequest } from 'next/server';
 
-export const POST = async (req: NextRequest) => {
-  const { message } = await req.json();
+import { gemini, chatMessageHistorySchema } from '@/lib/server';
+import { streaming } from '@/lib/server';
 
-  const encoder = new TextEncoder();
+export async function POST(req: NextRequest) {
+  const { data } = await req.json();
+
+  console.log(data);
+
+  const validation = chatMessageHistorySchema.safeParse(data);
+
+  if (!validation.success) {
+    return new Response('Invalid message history format.', { status: 400 });
+  }
+
+  const messages = validation.data;
+
+  const history = messages.slice(0, -1).map((m) => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
+
+  const chat = gemini.startChat({ history });
+  const lastMessage = messages[messages.length - 1].content;
+
+  const result = await chat.sendMessageStream(lastMessage);
 
   const stream = new ReadableStream({
     async start(controller) {
-      const fakeResponse = `You said: "${message}". This is a simulated streaming response from the server.`;
-
-      const words = fakeResponse.split(' ');
-
-      for (const word of words) {
-        // simulate AI delay
-        await new Promise((r) => setTimeout(r, 120));
-
-        controller.enqueue(encoder.encode(word + ' '));
+      for await (const chunk of result.stream) {
+        const text = chunk.text();
+        if (text) {
+          controller.enqueue(new TextEncoder().encode(text));
+        }
       }
-
       controller.close();
     },
   });
 
   return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'no-cache',
-    },
+    headers: streaming.headers,
   });
-};
+}

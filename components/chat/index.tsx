@@ -1,8 +1,9 @@
 'use client';
 
+import type { ChatMessageHistory } from '@/lib/server';
+
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { v4 as uuidv4 } from 'uuid';
 import { cn } from '@/lib/client';
 
 import { PaperclipIcon, SendHorizontalIcon } from 'lucide-react';
@@ -18,9 +19,7 @@ export function Chat() {
   const attachedFilesRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [conversation, setConversation] = useState<
-    Array<{ id: string; message: string; type: string }>
-  >([]);
+  const [conversation, setConversation] = useState<ChatMessageHistory>([]);
 
   function simulateUploadClick() {
     attachedFilesRef.current?.click();
@@ -30,27 +29,18 @@ export function Chat() {
     if (!message.trim()) return;
 
     const userPayload = {
-      id: uuidv4(),
-      message,
-      type: 'user',
+      content: message,
+      role: 'user',
     };
 
-    const assistantId = uuidv4();
-
-    const assistantPayload = {
-      id: assistantId,
-      message: '',
-      type: 'assistant',
-    };
-
-    setConversation((prev) => [...prev, userPayload, assistantPayload]);
+    setConversation((prev) => [...prev, userPayload]);
     setMessage('');
     setIsLoading(true);
 
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ data: [...conversation, userPayload] }),
       });
 
       if (!res.body) throw new Error('No response body');
@@ -68,17 +58,13 @@ export function Chat() {
         if (value) {
           const chunk = decoder.decode(value, { stream: true });
           accumulatedText += chunk;
-
-          // update assistant message progressively
-          setConversation((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantId
-                ? { ...msg, message: accumulatedText }
-                : msg,
-            ),
-          );
         }
       }
+
+      setConversation((prev) => [
+        ...prev,
+        { content: accumulatedText, role: 'assistant' },
+      ]);
 
       setIsLoading(false);
     } catch (err) {
@@ -106,12 +92,12 @@ export function Chat() {
             key={index}
             className={cn(
               'w-[80%] border rounded-lg p-4',
-              cvx.type === 'user'
+              cvx.role === 'user'
                 ? 'self-end bg-gray-500 text-white'
                 : 'self-start',
             )}
           >
-            <p>{cvx.message}</p>
+            <p>{cvx.content}</p>
           </li>
         ))}
       </ul>

@@ -1,7 +1,5 @@
 'use client';
 
-import { generateAnswer } from '@/actions/chat';
-
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
@@ -20,7 +18,9 @@ export function Chat() {
   const attachedFilesRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [conversation, setConversation] = useState<ChatMessage[]>([]);
+  const [conversation, setConversation] = useState<
+    Array<{ id: string; message: string; type: string }>
+  >([]);
 
   function simulateUploadClick() {
     attachedFilesRef.current?.click();

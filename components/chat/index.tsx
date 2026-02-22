@@ -127,9 +127,13 @@ export function Chat() {
                   h3: ({ children }) => (
                     <h3 className='text-lg font-semibold mb-1'>{children}</h3>
                   ),
-                  p: ({ children }) => (
-                    <p className='mb-2 last:mb-0'>{children}</p>
-                  ),
+                  p: ({ children }) => {
+                    const child = Array.isArray(children)
+                      ? children[0]
+                      : children;
+                    if (child?.type === 'pre') return <>{children}</>;
+                    return <p className='mb-2 last:mb-0'>{children}</p>;
+                  },
                   ul: ({ children }) => (
                     <ul className='list-disc pl-5 mb-2'>{children}</ul>
                   ),

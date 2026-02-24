@@ -6,4 +6,6 @@ export const env = cleanEnv(process.env, {
   GEMINI_MODEL: str(),
   DATABASE_URL: str(),
   SHADOW_DATABASE_URL: str(),
+  BETTER_AUTH_SECRET: str(),
+  BETTER_AUTH_URL: str(),
 });
